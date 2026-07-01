@@ -23,7 +23,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: registry.meza.gg/docker-windows-github-runner
+  IMAGE_SHA_TAG: registry.meza.gg/docker-windows-github-runner:${{ github.sha }}
+  IMAGE_LATEST_TAG: registry.meza.gg/docker-windows-github-runner:latest
   RUNNER_VERSION: ${{ inputs.runner_version || '2.335.1' }}
   SERVERCORE_VERSION: ${{ inputs.servercore_version || 'ltsc2025' }}
 
@@ -36,28 +37,27 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Login to Docker Hub
+      - name: Log in to registry
         uses: docker/login-action@v4
         with:
           registry: registry.meza.gg
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-        with:
-          driver: docker
+      - name: Build image
+        shell: pwsh
+        run: |
+          docker build `
+            --build-arg SERVERCORE_VERSION="$env:SERVERCORE_VERSION" `
+            --build-arg RUNNER_VERSION="$env:RUNNER_VERSION" `
+            --tag "$env:IMAGE_SHA_TAG" `
+            --tag "$env:IMAGE_LATEST_TAG" `
+            .
 
-      - name: Build and push image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            SERVERCORE_VERSION=${{ env.SERVERCORE_VERSION }}
-            RUNNER_VERSION=${{ env.RUNNER_VERSION }}
+      - name: Push image
+        shell: pwsh
+        run: |
+          docker push "$env:IMAGE_SHA_TAG"
+          docker push "$env:IMAGE_LATEST_TAG"
