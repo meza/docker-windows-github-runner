@@ -21,7 +21,6 @@ RUN choco install -y --no-progress \
     powershell-core \
     docker-cli \
     python \
-    nodejs-lts \
     awscli \
     yq
 
